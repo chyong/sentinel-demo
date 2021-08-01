@@ -1,9 +1,9 @@
 package com.chenyong.sentinel.service;
 
 import com.alibaba.csp.sentinel.annotation.SentinelResource;
-import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.chenyong.sentinel.mapper.UserMapper;
 import com.chenyong.sentinel.model.User;
+import com.chenyong.sentinel.util.ExceptionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +18,7 @@ public class UserService {
     @Autowired
     private UserMapper userMapper;
 
+    @SentinelResource(value = "findUser", blockHandler = "findUserExceptionHandler", blockHandlerClass = ExceptionUtil.class)
     public User findUserByName(String name) {
         Map<String, String> map = new HashMap<String, String>();
         Iterator<Map.Entry<String, String>> iterator = map.entrySet().iterator();
@@ -38,9 +39,9 @@ public class UserService {
      *
      * @return
      */
-    @SentinelResource(value = "sayHello", blockHandler = "sayHelloExceptionHandler")
+    @SentinelResource(value = "sayHello", blockHandler = "sayHelloExceptionHandler", blockHandlerClass = ExceptionUtil.class)
     public String sayHello(String name) {
-        return "hello," + name;
+        return "hello," + findUserByName(name);
     }
 
     /**
@@ -48,20 +49,17 @@ public class UserService {
      *
      * @return
      */
-    @SentinelResource(value = "circuitBreaker", fallback = "circuitBreakerFallback", blockHandler = "sayHelloExceptionHandler")
+    @SentinelResource(value = "circuitBreaker", fallback = "circuitBreakerFallback", blockHandler = "sayHelloExceptionHandler", blockHandlerClass = ExceptionUtil.class)
     public String circuitBreaker(String name) {
+        try {
+            Thread.sleep(101);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         if ("zhangsan".equals(name)) {
-            return "hello," + name;
+            return "hello," + name + findUserByName(name);
         }
         throw new RuntimeException("发生异常");
-    }
-
-    public String circuitBreakerFallback(String name) {
-        return "服务异常，熔断降级, 请稍后重试!";
-    }
-
-    public String sayHelloExceptionHandler(String name, BlockException ex) {
-        return "访问过快，限流降级, 请稍后重试!";
     }
 
 }
